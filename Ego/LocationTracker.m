@@ -44,7 +44,7 @@
     locationManager.delegate = self;
     locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
     locationManager.distanceFilter = kCLDistanceFilterNone;
-//    [locationManager startUpdatingLocation];
+    [locationManager startUpdatingLocation];
     
     //Use the BackgroundTaskManager to manage all the background Task
     self.shareModel.bgTask = [BackgroundTaskManager sharedBackgroundTaskManager];
@@ -64,7 +64,7 @@
     locationManager.delegate = self;
     locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
     locationManager.distanceFilter = kCLDistanceFilterNone;
-//    [locationManager startUpdatingLocation];
+    [locationManager startUpdatingLocation];
 }
 
 
@@ -86,7 +86,7 @@
             locationManager.delegate = self;
             locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
             locationManager.distanceFilter = kCLDistanceFilterNone;
-//            [locationManager startUpdatingLocation];
+            [locationManager startUpdatingLocation];
         }
 	}
 }
