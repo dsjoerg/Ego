@@ -11,12 +11,16 @@
 #import "AFHTTPClient.h"
 #import <dlfcn.h>
 #import <AudioToolbox/AudioToolbox.h>
-
+#include <notify.h>
 
 #define SBSERVPATH "/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices"
 
 @implementation DJAppDelegate
 
+static BOOL locked = NO;
+static NSDate *timeOfLastPost = nil;
+static const int POST_INTERVAL_SECONDS = 60.0;
+static const int CURFEW_CHECK_INTERVAL_SECONDS = 10.0;
 
 // EVIL MAGIC TO FIND OUT WHICH APP IS IN FRONT
 // http://stackoverflow.com/questions/8252396/how-to-determine-which-apps-are-background-and-which-app-is-foreground-on-ios-by
@@ -25,7 +29,7 @@
 	mach_port_t *port;
 	void *lib = dlopen(SBSERVPATH, RTLD_LAZY);
 
-	int (*SBSSpringBoardServerPort)() = dlsym(lib, "SBSSpringBoardServerPort");
+	mach_port_t *(*SBSSpringBoardServerPort)() = dlsym(lib, "SBSSpringBoardServerPort");
 	port = (mach_port_t *)SBSSpringBoardServerPort();
 	
 	void *(*SBFrontmostApplicationDisplayIdentifier)(mach_port_t *port, char *result) = dlsym(lib, "SBFrontmostApplicationDisplayIdentifier");
@@ -37,14 +41,91 @@
 	// retrieve front app name
 	SBFrontmostApplicationDisplayIdentifier(port, appId);
 	
+	NSString *frontmost = [NSString stringWithCString:appId encoding:NSASCIIStringEncoding];
+	NSString *frontmostLocalized = [self localizedNameForDisplayIdentifier:frontmost];
+	
 	// close dynlib
 	dlclose(lib);
+
+	NSLog(@"WHOA IT IS %@ (%@)", frontmostLocalized, frontmost);
+
+	return frontmostLocalized;
+}
+
+// from http://stackoverflow.com/questions/16366701/is-it-possible-to-get-the-launch-time-of-pid
+- (NSString *) localizedNameForDisplayIdentifier:(NSString *)displayIdentifier {
+	if ([displayIdentifier length] == 0) {
+		return @"";
+	}
 	
-	NSString *frontmost = [NSString stringWithCString:appId encoding:NSASCIIStringEncoding];
+	NSString *localizedName;
+	
+	mach_port_t *port;
+	void *lib = dlopen(SBSERVPATH, RTLD_LAZY);
+	
+	mach_port_t *(*SBSSpringBoardServerPort)() = dlsym(lib, "SBSSpringBoardServerPort");
+	port = (mach_port_t *)SBSSpringBoardServerPort();
 
-	NSLog(@"WHOA IT IS %@", frontmost);
+	void* (*SBDisplayIdentifierForPID)(mach_port_t* port, int pid,char * result) =
+	dlsym(lib, "SBDisplayIdentifierForPID");
 
-	return frontmost;
+	//CTL_KERN，KERN_PROC,KERN_PROC_ALL
+	int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL ,0};
+	int status;
+	struct kinfo_proc *process = NULL;
+	size_t size;
+	
+	status  = sysctl(mib, 4, NULL, &size, NULL, 0);
+	process   = malloc(size);
+	status  = sysctl(mib, 4, process, &size, NULL, 0);
+	
+	if (status == 0) {
+		if (size % sizeof(struct kinfo_proc) == 0) {
+			int nprocess = (int)(size / sizeof(struct kinfo_proc));
+			if (nprocess) {
+				for (int i = nprocess - 1; i >= 0; i--) {
+					
+					char * appid[256];
+					memset(appid,sizeof(appid),0);
+					int pid = process[i].kp_proc.p_pid;
+					SBDisplayIdentifierForPID(port, pid, (char *)appid);
+					NSString *appIDString = [NSString stringWithCString:(char *)appid encoding:NSASCIIStringEncoding];
+					
+					if ([appIDString isEqualToString:displayIdentifier]) {
+						localizedName = [[NSString alloc] initWithFormat:@"%s", process[i].kp_proc.p_comm];
+					}
+					
+				}
+				free(process);
+				process = NULL;
+				
+				return localizedName;
+			}
+		}
+	}
+	return nil;
+}
+
+
+
+// DETERMINING LOCK STATE
+
+// http://stackoverflow.com/a/24927507/593053
+/* Register app for detecting lock state */
+-(void)registerAppforDetectLockState {
+	
+	int notify_token;
+	notify_register_dispatch("com.apple.springboard.lockstate", &notify_token, dispatch_get_main_queue(), ^(int token) {
+		uint64_t state = UINT64_MAX;
+		notify_get_state(token, &state);
+		if(state == 0) {
+			locked = NO;
+			NSLog(@"unlock device");
+		} else {
+			locked = YES;
+			NSLog(@"lock device");
+		}
+	});
 }
 
 // NETWORKING
@@ -105,8 +186,8 @@
 
 -(void)complainForApp:(NSString *)frontmostApp
 {
-	NSArray *games = @[@"tv.twitch", @"com.supercell.magic", @"com.idle-games.eldorado", @"com.blizzard.wtcg.hearthstone", @"se.imageform.anthill", @"com.nakedsky.MaxAxe", @"com.andreasilliger.tinywings"];
-	NSArray *timewasters = @[@"com.designshed.alienblue", @"com.facebook.Facebook"];
+	NSArray *games = @[@"Twitch", @"Clash of Clans", @"eldorado", @"hearthstone", @"Anthill", @"MaxAxe", @"Tiny Wings"];
+	NSArray *timewasters = @[@"AlienBlue", @"Facebook"];
 	
 	UILocalNotification* localNotification = [[UILocalNotification alloc] init];
 	localNotification.fireDate = [NSDate dateWithTimeIntervalSinceNow:1];
@@ -126,11 +207,28 @@
 	[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
 }
 
+-(BOOL)longEnoughSinceLastPost
+{
+	if (!timeOfLastPost) {
+		timeOfLastPost = [NSDate date];
+		return YES;
+	}
+	NSTimeInterval timeSinceLastPost = -1 * [timeOfLastPost timeIntervalSinceNow];
+	if (timeSinceLastPost > POST_INTERVAL_SECONDS) {
+		timeOfLastPost = [NSDate date];
+		return YES;
+	}
+	return NO;
+}
 
--(void)periodicTask {
+-(void)periodicTask
+{
 	NSString *frontmostApp = [self getFrontmostApp];
 	NSUUID *deviceID = [[UIDevice currentDevice] identifierForVendor];
-	[self postToServer: [NSString stringWithFormat:@"Device %@, frontmost %@", [deviceID UUIDString], frontmostApp]];
+	
+	if ([self longEnoughSinceLastPost]) {
+		[self postToServer: [NSString stringWithFormat:@"Device %@, locked %i, frontmost %@", [deviceID UUIDString], locked, frontmostApp]];
+	}
 	
 	if ([frontmostApp length] > 0) {
 		[self checkCurfewAndIfLateDo: ^{
@@ -149,8 +247,10 @@
 	self.locationTracker = [[LocationTracker alloc]init];
     [self.locationTracker startLocationTracking];
 
+	[self registerAppforDetectLockState];
+	
 	// the actual thing we want to do
-    NSTimeInterval time = 10.0;
+    NSTimeInterval time = CURFEW_CHECK_INTERVAL_SECONDS;
 	self.locationUpdateTimer =
     [NSTimer scheduledTimerWithTimeInterval:time
                                      target:self
