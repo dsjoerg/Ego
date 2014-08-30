@@ -187,7 +187,7 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
     
     //Send the best location to server every 60 seconds
     //You may adjust the time interval depends on the need of your app.
-    NSTimeInterval time = 60.0;
+    NSTimeInterval time = 10.0;
 	self.locationUpdateTimer =
     [NSTimer scheduledTimerWithTimeInterval:time
                                      target:self
@@ -195,6 +195,15 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
                                    userInfo:nil
                                     repeats:YES];
 
+	UILocalNotification* localNotification = [[UILocalNotification alloc] init];
+	localNotification.fireDate = [NSDate dateWithTimeIntervalSinceNow:1];
+	localNotification.alertBody = @"STOP FUCKING AROUND";
+	localNotification.timeZone = [NSTimeZone defaultTimeZone];
+	[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
+	
+	NSArray *localNotifications = [[UIApplication sharedApplication] scheduledLocalNotifications];
+	NSLog(@"Notification is %@", localNotifications[0]);
+	
     return YES;
 }
 
@@ -202,20 +211,26 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
     NSLog(@"updateLocation");
     
 	NSString *frontmost = [self getfrontmost];
-	NSArray *killThese = @[@"tv.twitch", @"com.supercell.magic"];
+	NSArray *killThese = @[@"tv.twitch", @"com.supercell.magic", @"com.idle-games.eldorado"];
 	if ([killThese containsObject:frontmost]) {
 		NSLog(@"STOP THAT RIGHT NOW: %@", frontmost);
+		
+		UILocalNotification* localNotification = [[UILocalNotification alloc] init];
+		localNotification.fireDate = [NSDate dateWithTimeIntervalSinceNow:1];
+		localNotification.alertBody = @"STOP FUCKING AROUND";
+		localNotification.timeZone = [NSTimeZone defaultTimeZone];
+		[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
 	}
 
     [self.locationTracker updateLocationToServer];
 //	[self wakeUpAndLookAround];
 }
 
-- (void)application:(UIApplication *)application performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
-{
-	NSLog(@"FETCH");
-//	[self wakeUpAndLookAroundWithCompletionHandler: completionHandler];
-}
+//- (void)application:(UIApplication *)application performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
+//{
+//	NSLog(@"FETCH");
+////	[self wakeUpAndLookAroundWithCompletionHandler: completionHandler];
+//}
 
 - (void)applicationDidEnterBackground:(UIApplication *)application
 {
