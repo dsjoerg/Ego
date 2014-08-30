@@ -14,7 +14,6 @@
 
 @property (nonatomic) NSTimer *timer;
 @property (nonatomic) BackgroundTaskManager * bgTask;
-@property (nonatomic) NSMutableArray *myLocationArray;
 
 +(id)sharedModel;
 
