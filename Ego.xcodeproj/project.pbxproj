@@ -10,6 +10,10 @@
 		6347FB6819B1551700A6DE6A /* LocationTracker.m in Sources */ = {isa = PBXBuildFile; fileRef = 6347FB6319B1551700A6DE6A /* LocationTracker.m */; };
 		6347FB6919B1551700A6DE6A /* BackgroundTaskManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 6347FB6519B1551700A6DE6A /* BackgroundTaskManager.m */; };
 		6347FB6A19B1551700A6DE6A /* LocationShareModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 6347FB6719B1551700A6DE6A /* LocationShareModel.m */; };
+		6347FB6C19B1878100A6DE6A /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6347FB6B19B1878100A6DE6A /* AudioToolbox.framework */; };
+		6347FB6E19B1889600A6DE6A /* Klaxon_horn_64kb.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6347FB6D19B1889600A6DE6A /* Klaxon_horn_64kb.mp3 */; };
+		6347FB7019B1891400A6DE6A /* supply.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6347FB6F19B1891400A6DE6A /* supply.mp3 */; };
+		6347FB7219B18A3400A6DE6A /* minerals.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6347FB7119B18A3400A6DE6A /* minerals.mp3 */; };
 		63A8C14A19AE534000A3CA8D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 63A8C14919AE534000A3CA8D /* Foundation.framework */; };
 		63A8C14C19AE534000A3CA8D /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 63A8C14B19AE534000A3CA8D /* CoreGraphics.framework */; };
 		63A8C14E19AE534000A3CA8D /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 63A8C14D19AE534000A3CA8D /* UIKit.framework */; };
@@ -48,6 +52,10 @@
 		6347FB6519B1551700A6DE6A /* BackgroundTaskManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BackgroundTaskManager.m; sourceTree = "<group>"; };
 		6347FB6619B1551700A6DE6A /* LocationShareModel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LocationShareModel.h; sourceTree = "<group>"; };
 		6347FB6719B1551700A6DE6A /* LocationShareModel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LocationShareModel.m; sourceTree = "<group>"; };
+		6347FB6B19B1878100A6DE6A /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
+		6347FB6D19B1889600A6DE6A /* Klaxon_horn_64kb.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Klaxon_horn_64kb.mp3; sourceTree = "<group>"; };
+		6347FB6F19B1891400A6DE6A /* supply.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = supply.mp3; sourceTree = "<group>"; };
+		6347FB7119B18A3400A6DE6A /* minerals.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = minerals.mp3; sourceTree = "<group>"; };
 		63A8C14619AE534000A3CA8D /* Ego.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ego.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		63A8C14919AE534000A3CA8D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		63A8C14B19AE534000A3CA8D /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -77,6 +85,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6347FB6C19B1878100A6DE6A /* AudioToolbox.framework in Frameworks */,
 				63A8C14C19AE534000A3CA8D /* CoreGraphics.framework in Frameworks */,
 				63A8C14E19AE534000A3CA8D /* UIKit.framework in Frameworks */,
 				63A8C14A19AE534000A3CA8D /* Foundation.framework in Frameworks */,
@@ -120,6 +129,7 @@
 		63A8C14819AE534000A3CA8D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				6347FB6B19B1878100A6DE6A /* AudioToolbox.framework */,
 				63A8C14919AE534000A3CA8D /* Foundation.framework */,
 				63A8C14B19AE534000A3CA8D /* CoreGraphics.framework */,
 				63A8C14D19AE534000A3CA8D /* UIKit.framework */,
@@ -157,6 +167,9 @@
 			children = (
 				63A8C15119AE534000A3CA8D /* Ego-Info.plist */,
 				63A8C15219AE534000A3CA8D /* InfoPlist.strings */,
+				6347FB6D19B1889600A6DE6A /* Klaxon_horn_64kb.mp3 */,
+				6347FB7119B18A3400A6DE6A /* minerals.mp3 */,
+				6347FB6F19B1891400A6DE6A /* supply.mp3 */,
 				63A8C15519AE534000A3CA8D /* main.m */,
 				63A8C15719AE534000A3CA8D /* Ego-Prefix.pch */,
 			);
@@ -271,6 +284,9 @@
 				63A8C16019AE534000A3CA8D /* Main_iPad.storyboard in Resources */,
 				63A8C16819AE534000A3CA8D /* Images.xcassets in Resources */,
 				63A8C15D19AE534000A3CA8D /* Main_iPhone.storyboard in Resources */,
+				6347FB7019B1891400A6DE6A /* supply.mp3 in Resources */,
+				6347FB6E19B1889600A6DE6A /* Klaxon_horn_64kb.mp3 in Resources */,
+				6347FB7219B18A3400A6DE6A /* minerals.mp3 in Resources */,
 				63A8C15419AE534000A3CA8D /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

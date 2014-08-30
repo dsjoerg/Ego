@@ -9,8 +9,9 @@
 #import "DJAppDelegate.h"
 #import <CocoaLumberjack/CocoaLumberjack.h>
 #include <sys/sysctl.h>
-#import "AFNetworking.h"
+#import "AFHTTPClient.h"
 #import <dlfcn.h>
+#import <AudioToolbox/AudioToolbox.h>
 
 
 #define SBSERVPATH "/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices"
@@ -85,29 +86,30 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
 	return jsonString;
 }
 
--(void)postToServer: (NSDictionary *)dict withCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
-{
-	NSString *path = [NSString stringWithFormat:@"%@/%@", [self baseServerURL], @"api/v1/text_observation"];
-	
-	NSDictionary *params = @{@"text": [self jsonForDict:dict]};
-	
-	AFHTTPRequestOperationManager *manager = [AFHTTPRequestOperationManager manager];
-	manager.responseSerializer.acceptableContentTypes = [NSSet setWithObject:@"application/json"];
-	[manager POST:path parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-//		NSLog(@"JSON: %@", responseObject);
-		NSLog(@"SUCKSESS");
-		if (completionHandler) {
-			completionHandler(UIBackgroundFetchResultNewData);
-		}
-	} failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-		NSLog(@"Error: %@", error);
-		if (completionHandler) {
-			completionHandler(UIBackgroundFetchResultFailed);
-		}
-	}];
-	
-//	NSURLSession *session = [NSURLSession sharedSession];
-}
+// this function works in AFNetworking 2.0, but not under 0.10.1
+//-(void)postToServer: (NSDictionary *)dict withCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
+//{
+//	NSString *path = [NSString stringWithFormat:@"%@/%@", [self baseServerURL], @"api/v1/text_observation"];
+//	
+//	NSDictionary *params = @{@"text": [self jsonForDict:dict]};
+//	
+//	AFHTTPRequestOperationManager *manager = [AFHTTPRequestOperationManager manager];
+//	manager.responseSerializer.acceptableContentTypes = [NSSet setWithObject:@"application/json"];
+//	[manager POST:path parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
+////		NSLog(@"JSON: %@", responseObject);
+//		NSLog(@"SUCKSESS");
+//		if (completionHandler) {
+//			completionHandler(UIBackgroundFetchResultNewData);
+//		}
+//	} failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+//		NSLog(@"Error: %@", error);
+//		if (completionHandler) {
+//			completionHandler(UIBackgroundFetchResultFailed);
+//		}
+//	}];
+//	
+////	NSURLSession *session = [NSURLSession sharedSession];
+//}
 
 
 // from http://stackoverflow.com/questions/16366701/is-it-possible-to-get-the-launch-time-of-pid
@@ -165,7 +167,7 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
 			result = dict;
 		}
 	}
-	[self postToServer:result withCompletionHandler:completionHandler];
+//	[self postToServer:result withCompletionHandler:completionHandler];
 }
 
 -(void) wakeUpAndLookAround
@@ -194,34 +196,64 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
                                    selector:@selector(updateLocation)
                                    userInfo:nil
                                     repeats:YES];
-
-	UILocalNotification* localNotification = [[UILocalNotification alloc] init];
-	localNotification.fireDate = [NSDate dateWithTimeIntervalSinceNow:1];
-	localNotification.alertBody = @"STOP FUCKING AROUND";
-	localNotification.timeZone = [NSTimeZone defaultTimeZone];
-	[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
-	
-	NSArray *localNotifications = [[UIApplication sharedApplication] scheduledLocalNotifications];
-	NSLog(@"Notification is %@", localNotifications[0]);
 	
     return YES;
 }
 
--(void)updateLocation {
-    NSLog(@"updateLocation");
-    
+-(void)complainIfRunningAnApp
+{
 	NSString *frontmost = [self getfrontmost];
-	NSArray *killThese = @[@"tv.twitch", @"com.supercell.magic", @"com.idle-games.eldorado"];
-	if ([killThese containsObject:frontmost]) {
-		NSLog(@"STOP THAT RIGHT NOW: %@", frontmost);
-		
+	NSArray *games = @[@"tv.twitch", @"com.supercell.magic", @"com.idle-games.eldorado", @"com.blizzard.wtcg.hearthstone", @"se.imageform.anthill", @"com.nakedsky.MaxAxe", @"com.andreasilliger.tinywings"];
+	NSArray *timewasters = @[@"com.designshed.alienblue", @"com.facebook.Facebook"];
+
+	if ([frontmost length] > 0) {
 		UILocalNotification* localNotification = [[UILocalNotification alloc] init];
 		localNotification.fireDate = [NSDate dateWithTimeIntervalSinceNow:1];
-		localNotification.alertBody = @"STOP FUCKING AROUND";
 		localNotification.timeZone = [NSTimeZone defaultTimeZone];
+
+		if ([games containsObject:frontmost]) {
+			localNotification.alertBody = @"LEAST OF ALL A GAME";
+			localNotification.soundName = @"Klaxon_horn_64kb.mp3";
+		} else if ([timewasters containsObject:frontmost]) {
+			localNotification.alertBody = @"STOP READING";
+			localNotification.soundName = @"minerals.mp3";
+		} else {
+			localNotification.alertBody = @"GO TO SLEEP ITS LATE";
+			localNotification.soundName = @"supply.mp3";
+		}
+
 		[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
 	}
 
+}
+
+-(NSString *)curfewActivePath
+{
+	NSString *email = @"dsjoerg@gmail.com";
+    return [NSString stringWithFormat:@"/api/v1/curfew/is_active?email=%@", email];
+}
+
+
+-(void)complainIfRunningAnAppLateAtNight {
+
+	AFHTTPClient *client = [AFHTTPClient clientWithBaseURL:[NSURL URLWithString:[self baseServerURL]]];
+	[client getPath:[self curfewActivePath] parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+		NSString *responseString = [[NSString alloc] initWithData:responseObject encoding:NSUTF8StringEncoding];
+		if ([responseString isEqualToString:@"true"]) {
+			[self complainIfRunningAnApp];
+		}
+	} failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+		DDLogDebug(@"Failed! With error %@", error);
+	}];
+
+	
+	
+}
+
+-(void)updateLocation {
+    NSLog(@"updateLocation");
+
+	[self complainIfRunningAnAppLateAtNight];
     [self.locationTracker updateLocationToServer];
 //	[self wakeUpAndLookAround];
 }
