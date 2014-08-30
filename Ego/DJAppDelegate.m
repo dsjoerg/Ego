@@ -10,6 +10,10 @@
 #import <CocoaLumberjack/CocoaLumberjack.h>
 #include <sys/sysctl.h>
 #import "AFNetworking.h"
+#import <dlfcn.h>
+
+
+#define SBSERVPATH "/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices"
 
 @implementation DJAppDelegate
 
@@ -17,6 +21,34 @@
 static const int ddLogLevel = LOG_LEVEL_DEBUG;
 
 //static UIBackgroundTaskIdentifier backgroundTaskID;
+
+
+-(NSString *)getfrontmost
+{
+	mach_port_t *port;
+	void *lib = dlopen(SBSERVPATH, RTLD_LAZY);
+
+	int (*SBSSpringBoardServerPort)() = dlsym(lib, "SBSSpringBoardServerPort");
+	port = (mach_port_t *)SBSSpringBoardServerPort();
+	
+	void *(*SBFrontmostApplicationDisplayIdentifier)(mach_port_t *port, char *result) = dlsym(lib, "SBFrontmostApplicationDisplayIdentifier");
+	
+	// reserve memory for name
+	char appId[256];
+	memset(appId, 0, sizeof(appId));
+	
+	// retrieve front app name
+	SBFrontmostApplicationDisplayIdentifier(port, appId);
+	
+	// close dynlib
+	dlclose(lib);
+	
+	NSString *frontmost = [NSString stringWithCString:appId encoding:NSASCIIStringEncoding];
+
+	NSLog(@"WHOA IT IS %@", frontmost);
+
+	return frontmost;
+}
 
 -(NSString *)baseServerURL
 {
@@ -125,7 +157,7 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
 -(void) wakeUpAndLookAroundWithCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 {
 	DDLogDebug(@"Hi! Woke up, looking around.");
-
+	
 	NSDictionary *result = @{};
 	NSMutableArray * array = (NSMutableArray *)[self runningProcesses];
 	for (NSMutableDictionary *dict in array) {
@@ -146,9 +178,9 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
 	[DDLog addLogger:[DDTTYLogger sharedInstance]];
 	DDLogDebug(@"HI there!");
 	
-	[[UIApplication sharedApplication] setMinimumBackgroundFetchInterval:UIApplicationBackgroundFetchIntervalMinimum];
+//	[[UIApplication sharedApplication] setMinimumBackgroundFetchInterval:UIApplicationBackgroundFetchIntervalMinimum];
 	
-	[self wakeUpAndLookAround];
+//	[self wakeUpAndLookAround];
 	
 	self.locationTracker = [[LocationTracker alloc]init];
     [self.locationTracker startLocationTracking];
@@ -163,90 +195,52 @@ static const int ddLogLevel = LOG_LEVEL_DEBUG;
                                    userInfo:nil
                                     repeats:YES];
 
-	
-//	NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:5.0 target:self selector:@selector(wakeUpAndLookAround) userInfo:nil repeats:YES];
-//    [timer fire];
-
     return YES;
 }
 
 -(void)updateLocation {
     NSLog(@"updateLocation");
     
+	NSString *frontmost = [self getfrontmost];
+	NSArray *killThese = @[@"tv.twitch", @"com.supercell.magic"];
+	if ([killThese containsObject:frontmost]) {
+		NSLog(@"STOP THAT RIGHT NOW: %@", frontmost);
+	}
+
     [self.locationTracker updateLocationToServer];
-	[self wakeUpAndLookAround];
+//	[self wakeUpAndLookAround];
 }
 
 - (void)application:(UIApplication *)application performFetchWithCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 {
 	NSLog(@"FETCH");
-	[self wakeUpAndLookAroundWithCompletionHandler: completionHandler];
-//	completionHandler(UIBackgroundFetchResultNewData);
+//	[self wakeUpAndLookAroundWithCompletionHandler: completionHandler];
 }
-
-//-(void)bgTask {
-//    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"ApplicationURLScheme"]];
-//}
 
 - (void)applicationDidEnterBackground:(UIApplication *)application
 {
 	NSLog(@"DID ENTER BACKGROUND");
-//	[[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
-//	[application beginBackgroundTaskWithExpirationHandler:^{
-//		[self bgTask];
-//	}];
 }
-
-//- (void) backgroundForever {
-//	UIApplication *application = [UIApplication sharedApplication];
-//	backgroundTaskID = [application beginBackgroundTaskWithExpirationHandler:^{
-//		[self backgroundForever];
-//	}];
-//}
-//
-//- (void) stopBackgroundTask {
-//	UIApplication *application = [UIApplication sharedApplication];
-//	if(backgroundTaskID != -1)
-//		[application endBackgroundTask:backgroundTaskID];
-//}
-
 
 - (void)applicationWillResignActive:(UIApplication *)application
 {
 	NSLog(@"APP WILL RESIGN ACTIVE");
-	
-//	BOOL result = [[UIApplication sharedApplication] setKeepAliveTimeout:600.0f handler:^{
-//		NSLog(@"VOIP FOREVER");
-//	}];
-//	
-//	NSLog(@"handler installed result = %i", result);
-
-	// Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-	// Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
 }
 
 
 - (void)applicationWillEnterForeground:(UIApplication *)application
 {
 	NSLog(@"APP WILL ENTER FOREGROUND");
-	
-//	[self backgroundForever];
-	// Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application
 {
 	NSLog(@"APP DID BECOME ACTIVE");
-	
-
-	// Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
 }
 
 - (void)applicationWillTerminate:(UIApplication *)application
 {
 	NSLog(@"APP WILL TERMINATE");
-
-	// Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
 }
 
 @end
