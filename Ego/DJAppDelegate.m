@@ -17,10 +17,13 @@
 
 @implementation DJAppDelegate
 
+// global state is really evil.  for example:
 static BOOL locked = NO;
+
 static NSDate *timeOfLastPost = nil;
-static const int POST_INTERVAL_SECONDS = 60.0;
+static const int POST_INTERVAL_SECONDS = 59.0;
 static const int CURFEW_CHECK_INTERVAL_SECONDS = 10.0;
+static NSDateFormatter *_dateFormatter;
 
 // EVIL MAGIC TO FIND OUT WHICH APP IS IN FRONT
 // http://stackoverflow.com/questions/8252396/how-to-determine-which-apps-are-background-and-which-app-is-foreground-on-ios-by
@@ -172,10 +175,22 @@ static const int CURFEW_CHECK_INTERVAL_SECONDS = 10.0;
 	
 }
 
--(void)postToServer: (NSString *)stringToPost
+-(void)postToServerApp: (NSString *)frontmostApp
 {
+	NSDate *now = [NSDate date];
+	NSString *nowString = [_dateFormatter stringFromDate:now];
+	NSString *deviceIDString = [[[UIDevice currentDevice] identifierForVendor] UUIDString];
+	NSString *stringToPost = [NSString stringWithFormat:@"Device %@, locked %i, frontmost %@",
+							  deviceIDString, locked, frontmostApp];
+							  
+	NSDictionary *params = @{@"text": stringToPost,
+							 @"device": deviceIDString,
+							 @"when": nowString,
+							 @"frontmostApp": frontmostApp,
+							 @"locked": @(locked)};
+				
 	AFHTTPClient *client = [AFHTTPClient clientWithBaseURL:[NSURL URLWithString:[self baseServerURL]]];
-	[client postPath:[self textObservationPath] parameters:@{@"text": stringToPost} success:^(AFHTTPRequestOperation *operation, id responseObject) {
+	[client postPath:[self textObservationPath] parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
 			NSLog(@"POST SUCCEEDED");
 	} failure:^(AFHTTPRequestOperation *operation, NSError *error) {
 		NSLog(@"Failed! With error %@", error);
@@ -214,7 +229,7 @@ static const int CURFEW_CHECK_INTERVAL_SECONDS = 10.0;
 		return YES;
 	}
 	NSTimeInterval timeSinceLastPost = -1 * [timeOfLastPost timeIntervalSinceNow];
-	if (timeSinceLastPost > POST_INTERVAL_SECONDS) {
+	if (timeSinceLastPost >= POST_INTERVAL_SECONDS) {
 		timeOfLastPost = [NSDate date];
 		return YES;
 	}
@@ -224,10 +239,9 @@ static const int CURFEW_CHECK_INTERVAL_SECONDS = 10.0;
 -(void)periodicTask
 {
 	NSString *frontmostApp = [self getFrontmostApp];
-	NSUUID *deviceID = [[UIDevice currentDevice] identifierForVendor];
 	
 	if ([self longEnoughSinceLastPost]) {
-		[self postToServer: [NSString stringWithFormat:@"Device %@, locked %i, frontmost %@", [deviceID UUIDString], locked, frontmostApp]];
+		[self postToServerApp:frontmostApp];
 	}
 	
 	if ([frontmostApp length] > 0) {
@@ -237,12 +251,23 @@ static const int CURFEW_CHECK_INTERVAL_SECONDS = 10.0;
 	}
 }
 
+-(void)initializeDateFormatter
+{
+	// http://www.flexicoder.com/blog/index.php/2013/10/ios-24-hour-date-format/
+	_dateFormatter = [[NSDateFormatter alloc] init];
+	NSLocale *enUSPOSIXLocale = [[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"];
+	[_dateFormatter setLocale:enUSPOSIXLocale];
+	[_dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss"];
+	[_dateFormatter setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
+}
 
 
 // MAIN ENTRY POINT
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+	[self initializeDateFormatter];
+
 	// vampire magic to keep us alive forever
 	self.locationTracker = [[LocationTracker alloc]init];
     [self.locationTracker startLocationTracking];
